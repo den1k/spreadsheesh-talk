@@ -6,6 +6,10 @@ FIXME: my new application.
 
 Download from https://github.com/sst/sst
 
+```
+npx tailwindcss -i ./resources/styles.css -o ./resources/public/css/styles.css --watch
+```
+
 ## Usage
 
 FIXME: explanation
