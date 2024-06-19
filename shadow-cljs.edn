@@ -1,0 +1,27 @@
+;; shadow-cljs configuration
+{:deps     {:aliases [:dev/cljs :dev]}
+ :jvm-opts ["-Xss3m" "-Xmx2G"]
+ :builds
+ {:sst  {:target            :browser
+         :output-dir        "resources/public/js/compiled/talk"
+         :asset-path        "/js/compiled"
+         :module-hash-names true
+         :modules           {:main {:entries [sst.ui.app]
+                                    :init-fn sst.ui.app/start}}
+         :release           {:build-options {:cache-level :off}}
+         :build-hooks       [(hyperfiddle.electric.shadow-cljs.hooks/reload-clj)]
+
+         :devtools
+         {:watch-dir "resources/public"
+          ;:before-load yam.ui.app/stop
+          ;; after live-reloading finishes call this function
+          ;:after-load  yam.ui.app/start
+          ;; serve the public directory over http at port 8700
+          ;:http-root   "public"
+          ;:http-port   8700
+          :preloads  [devtools.preload]
+          :hud       #{:errors :progress}
+          ;:ignore-warnings true
+          ;:loader-mode     :default        ; faster reload
+          }
+         }}}

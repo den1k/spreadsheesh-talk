@@ -1,14 +1,17 @@
 (ns sst.ui.talk
   (:require
+    [clojure.string :as str]
     [hyperfiddle.electric :as e]
     [hyperfiddle.electric-dom2 :as dom]
     [net.cgrand.xforms :as x]
     [stuffs.keybind :as keybind]
     [stuffs.util :as su]
-    [tesserae.ui.electric-util :as eu]
     #?@(:clj [[nextjournal.markdown :as mkd]
               [clojure.java.io :as io]]))
   #?(:clj (:import (java.util Date))))
+
+(defmacro state [val]
+  `(let [atm# (atom ~val)] [atm# (e/watch atm#)]))
 
 (e/defn Html [html]
   (e/client
@@ -22,12 +25,7 @@
 
 (e/defn Markdown [md]
   (when-let [html (e/server (some-> md mkd/->hiccup su/hiccup->html))]
-    ;(println :ht html)
-    (new Html html)
-    #_(e/client
-        (dom/article
-          (dom/props {:class [:flex :flex-col :prose :lg:prose-xl]})
-          (dom/set-property! dom/node :innerHTML html)))))
+    (new Html html)))
 
 (e/defn RefWatcher
   ([a] (new RefWatcher nil a))
@@ -45,8 +43,8 @@
 
 (e/defn EditorWithEval [code]
   (e/client
-    (let [[!code-str code-str] (eu/state code)
-          [!result result] (eu/state "")
+    (let [[!code-str code-str] (state code)
+          [!result result] (state "")
           eval (e/fn [e]
                  (reset! !result
                          (e/server
@@ -98,15 +96,9 @@
         :electric (e/server (new content))))))
 
 (def a (atom 5))
+
 (comment
   (swap! a inc))
-
-(defn file->slide
-  [file-or-path]
-  #?(:clj
-     (when-let [s (slurp file-or-path)]
-       {:type    :markdown
-        :content s})))
 
 (def md-slides
   #?(:cljs (constantly nil)
@@ -114,17 +106,16 @@
      (let [sl (into []
                     (comp
                       ;(map str)
-                      (x/sort-by str)
-                      (map file->slide))
-                    (.listFiles (io/file "resources/talk")))]
+                      (map str/trim)
+                      (map (fn [s] {:type    :markdown
+                                    :content s})))
+                    (str/split (slurp "resources/public/talk/slides.md")
+                               #"---"))]
        (fn [slide-idx]
          (get sl (dec slide-idx))))))
 
-
 (def slides
-  [{:type    :ref-watcher
-    :content a}
-   (md-slides 1)
+  [(md-slides 1)
    (md-slides 2)
    (md-slides 3)
    {:type    :v-box
@@ -143,31 +134,36 @@
                 {:type    :editor-with-eval
                  :content "(slurp \"deps.edn\")"}
                 {:type    :editor-with-eval
-                 :content "(java.util.Date.)"}]
-      }]}
+                 :content "(java.util.Date.)"}]}]}
 
    {:type    :v-box
     :content [{:type    :editor-with-eval
                :content "(swap! sst.ui.talk/a inc)"}
               {:type    :ref-watcher
                :content a}]}
+   (md-slides 4)
+   (md-slides 5)
+   (md-slides 6)
+   {:type    :hiccup
+    :content [:div
+              [:h2 "Use case: Cost/Profit visualization by client and year at Lumber"]
+              [:video {:controls true :autoplay true :src "http://localhost:3200/talk/cost-profit-example.mp4"}]]}
+   (md-slides 7)
+   (md-slides 8)
+   ;(md-slides 9)
+   ;(md-slides 10)
 
-   {:type    :markdown
-    :content "## Demo Time!"}
-   {:type    :markdown
-    :content "## End"}
    ])
 
 (def dbg (atom nil))
 
-(defonce !idx (atom 1))
+(defonce !idx (atom 0))
 
 (e/defn Slides []
   ; DBG
   #_(e/server (new RefWatcher "DBG:" dbg))
   (e/client
-    (let [;[!idx idx]   (eu/state #_1 2)
-          idx         (e/watch !idx)
+    (let [idx         (e/watch !idx)
           total-count (count slides)
           midx        (mod idx total-count)
           slide-type  (e/server (:type (nth slides midx)))]
@@ -197,5 +193,3 @@
                    (dom/text (str (inc midx) "/" total-count))
                    (dom/button (dom/on "click" (e/fn [_] (swap! !idx inc)))
                                (dom/text ">"))))))))
-
-
